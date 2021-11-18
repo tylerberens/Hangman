@@ -1,0 +1,11 @@
+﻿@model Hangman.Models.Hangman
+@{
+    ViewBag.Title = "Hangman";
+    Layout = "~/Views/Shared/_DefaultLayout.cshtml";
+}
+<div class="center">
+    <h3>Give player a word!</h3>
+    <h3>Your word is: @Model.wordToGuess</h3>
+    <h3 style="letter-spacing:10px;">@Model.playerGuess</h3>
+
+</div>
