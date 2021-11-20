@@ -11,8 +11,6 @@ namespace Hangman.Controllers
     public class HangmanController : Controller
     {
         private static HttpClient _client = new HttpClient();
-        public bool isPlaying = false;
-        public bool hasLost = false;
         public HangmanClass hangman = new HangmanClass();
 
 
@@ -22,20 +20,58 @@ namespace Hangman.Controllers
             return View("NewGame");
         }
 
-        public ActionResult NewGame(){
-            if ( isPlaying == false )
-            {
-               var task = Task.Run( () => InitiateGame() );
-                Task newTask = task;
-                newTask.Wait();
-            }
-
-            return View( "Game", hangman );
+        public ActionResult NewGame()
+        {
+            TempData.Clear();
+            var task = Task.Run( () => InitiateGame() );
+            Task newTask = task;
+            newTask.Wait();
+            ViewBag.Message = "Press any letter key to make a guess!";
+            ViewBag.IsPlaying = true;
+            return View( "Game" );
         }
 
-        // Gets a random word from the API and load it into our Hangman model
+        public ActionResult NextGame( bool? HasWon )
+        {
+            if ( HasWon == null )
+            {
+
+                bool? hasWon = (bool?)TempData["HasWon"];
+                if ( hasWon == null )
+                {
+                    var hangman = (HangmanClass)TempData["Hangman"];
+                    var models = SetupModel();
+                    int incorrectAnswerCount = hangman.incorrectAnswerCount;
+
+                    ViewBag.HasWon = hangman.hasWon;
+                    ViewBag.WordToGuess = hangman.wordToGuess;
+                    ViewBag.CurrentState = models.ElementAt( incorrectAnswerCount ).Image;
+                    ViewBag.IncorrectLetters = string.Join( ", " , hangman.incorrectLetters );
+                    TempData["Hangman"] = hangman;
+                }
+                else
+                {
+                    ViewBag.HasWon = ( bool ) TempData["HasWon"];
+                    ViewBag.WordToGuess = TempData["WordToGuess"].ToString();
+                    ViewBag.CurrentState = TempData["CurrentState"].ToString();
+                    ViewBag.IncorrectLetters = TempData["IncorrectLetters"].ToString();
+                }
+                return View( "Game" , hangman );
+            }
+            else
+            {
+                return View( "NewGame" );
+            }
+        }
+
+        /// <summary>
+        /// Gets a random word from an API
+        /// Setup Game by configuring model
+        /// </summary>
+        /// <returns></returns>
         private async Task InitiateGame()
         {
+            
             string apiUrl = "https://random-word-api.herokuapp.com/word?number=1&swear=0";
             HttpResponseMessage response = await _client.GetAsync(apiUrl);
             if ( response.IsSuccessStatusCode )
@@ -43,38 +79,45 @@ namespace Hangman.Controllers
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 hangman.wordToGuess = FormatWord( bytes );
                 hangman.playerGuess = FormatGuess( hangman.wordToGuess );
+
+                ViewBag.WordToGuess = hangman.playerGuess;
                 hangman.hangmanModels = SetupModel();
+                hangman.incorrectLetters = new List<char>();
+                hangman.correctLetters = new List<char>();
+                hangman.usedLetters = new List<char>();
+                ViewBag.CurrentState = hangman.hangmanModels.ElementAt( 0 ).Image;
                 hangman.incorrectAnswerCount = 0;
-                hangman.currentState = GetCurrentState(hangman);
-                isPlaying = true;
+                hangman.currentState = hangman.hangmanModels.ElementAt(0);
+                hangman.isPlaying = true;
+                TempData["Hangman"] = hangman;
             }
             else
             {
                 // todo:
                 // failed to initate game
                 // throw error message
+                ViewBag.ErrorMessage = "Error starting game. Please try again";
             }
         }
 
-       private void ResetState()
-        {
-            ModelState.Remove( "playerGuess" );
-            ModelState.Remove( "playerInput" );
-            ModelState.Remove( "usedLetters" );
-            ModelState.Remove( "incorrectAnswerCount" );
-        }
 
-        private HangmanModel GetCurrentState(HangmanClass hangman)
-        {
-            return hangman.hangmanModels[hangman.incorrectAnswerCount];
-        }
-
+        /// <summary>
+        ///  Captures the users input
+        /// </summary>
+        /// <param name="input">HangmanClass contains values captured by players input</param>
+        /// 
+        /// <returns>Returns the next phase of the game</returns>
         [HttpPost]
-        public ActionResult PlayerInput( HangmanClass hangman )
+        public ActionResult PlayerInput(HangmanClass input)
         {
             if ( ModelState.IsValid )
             {
-                var playerInput = hangman.playerInput;
+                // join input to saved model
+                var playerInput = input.playerInput;
+                HangmanClass hangman = TempData["Hangman"] as HangmanClass;
+                hangman.playerInput = playerInput;
+                if( hangman.isPlaying == false)
+                    return RedirectToAction( "NewGame" );
                 if ( !string.IsNullOrWhiteSpace( playerInput ) )
                 {
                     char inputChar = playerInput[0];
@@ -85,43 +128,74 @@ namespace Hangman.Controllers
                         bool isNewLetter = CheckLetter( inputChar );
                         if ( isNewLetter )
                         {
-                            if( hangman.usedLetters == null )
-                            {
-                                var initiateList = new List<char>();
-                                initiateList.Add( inputChar );
-                                hangman.usedLetters = initiateList;
-                            }
-                            else
-                            {
-                                hangman.usedLetters.Add( inputChar );
-                            }
-                            var playerGuess = hangman.playerGuess;
-                            hangman = doesWordContainInput( hangman );
-                            if ( hangman.playerGuess == playerGuess )
+                            hangman.usedLetters.Add( inputChar );
+                            bool isMatch = doesWordContainInput();
+                            if ( !isMatch )
                             {
                                 hangman.incorrectAnswerCount++;
+                                hangman.incorrectLetters.Add( inputChar );
                             }
                             // correct answer
+                            hangman.correctLetters.Add( inputChar );
                         }
                         else
                         {
                             //already used letter message
+                            ViewBag.ErrorMessage = "Please select a new letter";
                         }
                     }
                     else
                     {
                         // incorrect letter message
+                        ViewBag.ErrorMessage = "Please select a letter";
                     }
                 }
+
+                var models = SetupModel();
+                int incorrectAnswerCount = hangman.incorrectAnswerCount;
+
+                ViewBag.CurrentState = models.ElementAt( incorrectAnswerCount ).Image;
+                ViewBag.WordToGuess = hangman.playerGuess;
+                ViewBag.UsedLetters = string.Join(", ", hangman.usedLetters);
+                ViewBag.IncorrectLetters = string.Join( ", ", hangman.incorrectLetters );
+                ViewBag.IncorrectCount = hangman.incorrectAnswerCount;
+                ViewBag.IsPlaying = true;
+
+                TempData["Hangman"] = hangman;
+
+                if ( hangman.playerGuess == hangman.wordToGuess )
+                {
+                    // won game
+                    TempData["HasWon"] = true;
+                    TempData["WordToGuess"] = hangman.wordToGuess;
+                    TempData["CurrentState"] = models.ElementAt( incorrectAnswerCount ).Image;
+                    TempData["IncorrectLetters"] = string.Join( ", " , hangman.incorrectLetters );
+                    hangman.hasWon = true;
+                    TempData["Hangman"] = hangman;
+                    return RedirectToAction( "NextGame");
+                }
+                else if ( hangman.incorrectAnswerCount == 6 )
+                {
+                    // game over                
+                    TempData["HasWon"] = false;
+                    TempData["WordToGuess"] = hangman.wordToGuess;
+                    TempData["CurrentState"] = models.ElementAt( incorrectAnswerCount ).Image;
+                    TempData["IncorrectLetters"] = string.Join( ", " , hangman.incorrectLetters );
+                    hangman.hasWon = false;
+                    TempData["Hangman"] = hangman;
+                    return RedirectToAction( "NextGame" );
+                }
+                else
+                {
+                    return View( "Game" , hangman );
+                }
             }
-            hangman.hangmanModels = SetupModel();
-            hangman.currentState = GetCurrentState( hangman );
-            ResetState();
-            return View( "Game", hangman );
+            return View( "Index" );
         }
 
         private bool CheckLetter(char input)
         {
+            var hangman = TempData["Hangman"] as HangmanClass;
             if( hangman.usedLetters == null )
             {
                 return true;
@@ -136,21 +210,25 @@ namespace Hangman.Controllers
             }
         }
 
-        public HangmanClass doesWordContainInput( HangmanClass hangman)
+        public bool doesWordContainInput()
         {
+            var hangman = TempData["Hangman"] as HangmanClass;
             char input = hangman.playerInput[0];
             List<char> letters = hangman.wordToGuess.ToList();
             List<char> revealedLetters = hangman.playerGuess.ToList();
-
+            bool match = false;
             for ( int i = 0; i < letters.Count; i++ )
             {
-                if( letters[i] == input )
+                var l = letters[i];
+                if( l == input )
                 {
                     revealedLetters[i] = input;
+                    match = true;
                 }
             }
             hangman.playerGuess = new string( revealedLetters.ToArray() );
-            return hangman;
+            TempData["Hangman"] = hangman;
+            return match;
         }
 
         private bool ValidatePlayerInput( char input)

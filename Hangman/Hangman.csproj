@@ -108,6 +108,7 @@
     <Content Include="Views\Hangman\NewGame.cshtml" />
     <Content Include="Views\Hangman\Game.cshtml" />
     <Content Include="Views\Hangman\Play.cshtml" />
+    <Content Include="Views\Hangman\NextGame.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
