@@ -1,0 +1,9 @@
+﻿
+@model Hangman.Models.HangmanClass
+
+@using ( Html.BeginForm( "PlayerInput" , "HangmanController" , FormMethod.Post ) )
+{
+    @Html.TextBoxFor( model => model.playerInput )
+    @Html.ValidationMessageFor( model => model.playerInput )
+    <button type="submit">Subscribe</button>
+}

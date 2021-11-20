@@ -1,11 +1,30 @@
-﻿@model Hangman.Models.Hangman
+﻿@model Hangman.Models.HangmanClass
 @{
     ViewBag.Title = "Hangman";
     Layout = "~/Views/Shared/_DefaultLayout.cshtml";
 }
 <div class="center">
-    <h3>Give player a word!</h3>
-    <h3>Your word is: @Model.wordToGuess</h3>
-    <h3 style="letter-spacing:10px;">@Model.playerGuess</h3>
+    @Html.Raw(Model.currentState.Image)
 
+    <h3>Your word is: @Model.wordToGuess</h3>
+    <h3 class="mb-3" style="letter-spacing:10px;">@Model.playerGuess</h3>
+
+    <div class="form-group">
+        @using ( Html.BeginForm( "PlayerInput" , "Hangman" , FormMethod.Post ) )
+        {
+            @Html.AntiForgeryToken()
+
+            @Html.TextBoxFor( x => x.playerInput )
+            @Html.ValidationMessageFor( x => x.playerInput )
+
+
+            @Html.HiddenFor( x => x.incorrectAnswerCount )
+            @Html.HiddenFor( x => x.playerGuess )
+            @Html.HiddenFor( x => x.playerInput )
+            @Html.HiddenFor( x => x.usedLetters )
+            @Html.HiddenFor( x => x.wordToGuess )
+
+
+        }
+    </div>
 </div>
