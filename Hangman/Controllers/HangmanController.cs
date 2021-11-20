@@ -141,13 +141,13 @@ namespace Hangman.Controllers
                         else
                         {
                             //already used letter message
-                            ViewBag.ErrorMessage = "Please select a new letter";
+                            ViewBag.Message = $"You already selected {hangman.playerInput}";
                         }
                     }
                     else
                     {
                         // incorrect letter message
-                        ViewBag.ErrorMessage = "Please select a letter";
+                        ViewBag.Message = "Please select a letter";
                     }
                 }
 

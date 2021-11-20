@@ -4,67 +4,70 @@
     Layout = "~/Views/Shared/_DefaultLayout.cshtml";
 }
 
-<div class="center">
-    <div class="panel">
-        <div class="panel-body text-center">
-            <div class="row">
-                <div class="col-xs-12 col-md-6">
-                    <div class="incorrectLetters">
-                        <label>Incorrect Letters:</label>
-                        @ViewBag.IncorrectLetters
-                    </div>
-                </div>
-                <div class="col-xs-12 col-md-6">
-                    @Html.Raw( ViewBag.CurrentState )
-                    <div class="form-group">
-                        @using ( Html.BeginForm( "PlayerInput" , "Hangman" , FormMethod.Post , new { id = "hangmanInput" } ) )
-                        {
-                            @Html.AntiForgeryToken()
 
-                            <div class="hide">
-                                @Html.TextBoxFor( x => x.playerInput )
-                            </div>
-
-                            @Html.ValidationMessageFor( x => x.playerInput )
-                        }
-                    </div>
-
+<div class="container">
+    <div class="row">
+        <div class="col-xs-12 col-md-6">
+            <div class="incorrectLetters">
+                <label>Incorrect Letters:</label>
+                <div>
+                    @ViewBag.IncorrectLetters
                 </div>
             </div>
+        </div>
+        <div class="col-xs-12 col-md-6">
+            <div class="hangman-view">
+                @Html.Raw( ViewBag.CurrentState )
+                <div class="form-group">
+                    @using ( Html.BeginForm( "PlayerInput" , "Hangman" , FormMethod.Post , new { id = "hangmanInput" } ) )
+                    {
+                        @Html.AntiForgeryToken()
 
-            <div class="row">
-                <div class="col-xs-12">
-                    <h3 class="m-5" style="letter-spacing:10px;">@ViewBag.WordToGuess</h3>
-                </div>
-            </div>
+                        <div class="input-container">
+                            @Html.TextBoxFor( x => x.playerInput )
+                        </div>
 
-            <div class="row">
-                <div class="col-xs-12">
-                    <div class="gameover">
-                        @if ( ViewBag.HasWon == true )
-                        {
-                            <h1 class="mb-3" style=" transform: rotate( 2deg);">You Won!</h1>
-                            <h3>You guessed the word @ViewBag.WordToGuess!</h3>
-                            <button type="button" onclick="location.href='@Url.Action("NewGame","Hangman", new { HasWon = true })'" class="btn btn-primary btn-lg">Play Again?</button>
-                        }
-                        else if ( ViewBag.HasWon == false )
-                        {
-                            <h1 class="mb-3" style=" transform: rotate( 2deg);">You Lost!</h1>
-                            <button type="button" onclick="location.href='@Url.Action("NewGame","Hangman", new { HasWon = false } )'" class="btn btn-primary btn-lg">Play Again?</button>
-                        }
-                    </div>
-                    <div class="alert">
-                        @ViewBag.Message
-                        @ViewBag.ErrorMessage
-                    </div>
+                        @Html.ValidationMessageFor( x => x.playerInput )
+                    }
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-xs-12">
+            <h2 class="guess-container">@ViewBag.WordToGuess</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="gameover">
+                @if ( ViewBag.HasWon == true )
+                {
+                    <h1 class="mb-3">You Won!</h1>
+                    <h3>You guessed the word @ViewBag.WordToGuess!</h3>
+                    <button type="button" onclick="location.href='@Url.Action("NewGame","Hangman", new { HasWon = true })'" class="btn btn-primary btn-lg">Play Again?</button>
+                }
+                else if ( ViewBag.HasWon == false )
+                {
+                    <h1 class="mb-3">You Lost!</h1>
+                    <button type="button" onclick="location.href='@Url.Action("NewGame","Hangman", new { HasWon = false } )'" class="btn btn-primary btn-lg">Play Again?</button>
+                }
+            </div>
+            <div class="alert">
+                <p>&nbsp;@ViewBag.Message</p>
+            </div>
+        </div>
+    </div>
 </div>
+
 @if ( ViewBag.IsPlaying == true)
 {
-    <script type="text/javascript">
+<script type="text/javascript">
+        $(function () {
+            $("#@Html.IdFor( x => x.playerInput )").val(null);
+        })
     $(document).keypress(function(e){
         var s = String.fromCharCode(e.which);
         if (s.match(/[a-zA-Z\.]/))
@@ -74,6 +77,6 @@
             $("#hangmanInput").submit()
         }
     });
-    </script>
+</script>
 }
 
