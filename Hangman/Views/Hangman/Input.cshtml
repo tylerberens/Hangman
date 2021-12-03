@@ -1,0 +1,37 @@
+﻿@model Hangman.Models.HangmanClass
+@{
+    AjaxOptions ajaxOptions = new AjaxOptions
+    {
+        HttpMethod = "Post",
+        InsertionMode = InsertionMode.Replace,
+        UpdateTargetId = "Hangman"
+    };
+}
+
+<div id="gameBoard" class="container">
+    @Html.Partial( "GameBoard" )
+</div>
+
+@if ( ViewBag.HasWon == null )
+{
+
+    <script id="buttonScript" type="text/javascript">
+        $(function () {
+            var keyEventListener = function (e) {
+                e.preventDefault();
+                var s = String.fromCharCode(e.which);
+                if (s.match(/[a-zA-Z\.]/)) {
+                    $.ajax({
+                        url: '@Url.Action( "PlayerInput" , "Hangman" )',
+                        type: 'POST',
+                        data: { "input": s },
+                        cache: false,
+                    }).done(function (result) {
+                        $('#gameBoard').html(result);
+                    });
+                }
+            }
+            document.addEventListener('keypress', keyEventListener);
+        });
+    </script>
+}

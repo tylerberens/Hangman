@@ -1,0 +1,68 @@
+﻿<div class="row">
+    <div class="col-xs-12 col-md-6">
+        <div class="incorrectLetters">
+            <label>Incorrect Letters:</label>
+            <div>
+                @ViewBag.IncorrectLetters
+            </div>
+        </div>
+    </div>
+    <div class="col-xs-12 col-md-6">
+        <div class="hangman-view">
+            @Html.Raw( ViewBag.CurrentState )
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        <h2 class="guess-container">@ViewBag.PlayerGuess</h2>
+    </div>
+</div>
+@if ( ViewBag.HasWon == "true" || ViewBag.HasWon == "false" )
+{
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="gameover">
+                @if ( ViewBag.HasWon == "true" )
+                {
+                    <h1 class="mb-3">You Won!</h1>
+                    <h3>You guessed the word @ViewBag.WordToGuess!</h3>
+                }
+                else if ( ViewBag.HasWon == "false" )
+                {
+                    <h1 class="mb-3">You Lost!</h1>
+                    <h3>The word to guess was @ViewBag.WordToGuess!</h3>
+                }
+                <button id="btnPlayAgain" type="button" class="btn btn-primary btn-lg">Play Again?</button>
+            </div>
+            <div class="alert">
+                <p>&nbsp;@ViewBag.Message</p>
+            </div>
+        </div>
+    </div>
+}
+
+@if ( ViewBag.HasWon != null )
+{
+    <script type="text/javascript">
+        $(function () {
+            $("#btnPlayAgain").click(function (e) {
+                e.preventDefault();
+                var hasWon = @ViewBag.HasWon;
+                $.ajax({
+                    url: '@Url.Action( "NewGame" , "Hangman")',
+                    type: 'POST',
+                    data: { "HasWon": hasWon },
+                    cache: false,
+                }).done(function (result) {
+                    $('#gameBoard').fadeOut(500)
+                    $(setTimeout(function () {
+                        $('#gameBoard').html(result).hide().fadeIn(500);
+                    }, 500))
+
+                });
+            });
+         })
+    </script>
+}

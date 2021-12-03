@@ -9,9 +9,10 @@ using Hangman.Models;
 namespace Hangman.Controllers
 {
     public class HangmanController : Controller
-    {
+    { 
         private static HttpClient _client = new HttpClient();
         public HangmanClass hangman = new HangmanClass();
+        public List<HangmanClass> hangmanGames = new List<HangmanClass>();
 
         /// <summary>
         /// Get
@@ -19,7 +20,7 @@ namespace Hangman.Controllers
         /// <returns>Forwards to NewGame</returns>
         public ActionResult Index()
         {
-            return View("NewGame");
+            return View("PlayNow");
         }
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace Hangman.Controllers
             // setup ViewBag for UI
             ViewBag.Message = "Press any letter key to make a guess!";
             ViewBag.IsPlaying = true;
-            return View( "Game" );
+            return PartialView( "Input" );
         }
 
         /// <summary>
@@ -47,17 +48,18 @@ namespace Hangman.Controllers
         /// </summary>
         /// <param name="HasWon"> Will be null which means its the players first game </param>
         /// <returns> The next state of the game </returns>
-        public ActionResult NextGame( bool? HasWon )
+        public ActionResult NextGame( string HasWon )
         {
             // if null its the first game
             if ( HasWon == null )
             {
+                var hangman = (HangmanClass)TempData["Hangman"];
                 // check to see if we have any state from previous player session
                 bool? hasWon = (bool?)TempData["HasWon"];
                 if ( hasWon == null )
                 {
                     // setup View with details created by the controller
-                    var hangman = (HangmanClass)TempData["Hangman"];
+                    
                     var models = SetupModel();
                     int incorrectAnswerCount = hangman.incorrectAnswerCount;
 
@@ -76,13 +78,14 @@ namespace Hangman.Controllers
                     ViewBag.CurrentState = TempData["CurrentState"].ToString();
                     ViewBag.IncorrectLetters = TempData["IncorrectLetters"].ToString();
                 }
+                hangmanGames.Add( hangman );
                 // present the player with Game.cshtml
-                return View( "Game" , hangman );
+                return PartialView( "Input" , hangman );
             }
             else
             {
                 // present the player with NewGame.cshtml
-                return View( "NewGame" );
+                return PartialView( "NewGame" );
             }
         }
 
@@ -94,35 +97,38 @@ namespace Hangman.Controllers
         private async Task InitiateGame()
         {
             // get a Random word generator
-            string apiUrl = "https://random-word-api.herokuapp.com/word?number=1&swear=0";
-            HttpResponseMessage response = await _client.GetAsync(apiUrl);
-            if ( response.IsSuccessStatusCode )
-            {
-                // bytes is the returned value from the API
-                var bytes = await response.Content.ReadAsByteArrayAsync();
+            //string apiUrl = "https://random-word-api.herokuapp.com/word?number=1&swear=0";
+            //HttpResponseMessage response = await _client.GetAsync(apiUrl);
+            //if ( response.IsSuccessStatusCode )
+            //{
+            //// bytes is the returned value from the API
+            //var bytes = await response.Content.ReadAsByteArrayAsync();
 
-                // strip the array brackets off the word
-                hangman.wordToGuess = FormatWord( bytes );
-                // setup the players guess from the word: _ _ _ _ 
-                hangman.playerGuess = FormatGuess( hangman.wordToGuess );
+            //// strip the array brackets off the word
+            //hangman.wordToGuess = FormatWord( bytes );
 
-                // setup ViewBag for UI and TempData for game state
-                ViewBag.WordToGuess = hangman.playerGuess;
-                hangman.hangmanModels = SetupModel();
-                hangman.incorrectLetters = new List<char>();
-                hangman.correctLetters = new List<char>();
-                hangman.usedLetters = new List<char>();
-                ViewBag.CurrentState = hangman.hangmanModels.ElementAt( 0 ).Image;
-                hangman.incorrectAnswerCount = 0;
-                hangman.currentState = hangman.hangmanModels.ElementAt(0);
-                hangman.isPlaying = true;
-                TempData["Hangman"] = hangman;
-            }
-            else
-            {
-                // failed to initate game
-                ViewBag.Message = "Error starting game. Please try again";
-            }
+            hangman.wordToGuess = GetRandomWord();
+            //// setup the players guess from the word: _ _ _ _ 
+            hangman.playerGuess = FormatGuess( hangman.wordToGuess );
+
+            // setup ViewBag for UI and TempData for game state
+                
+            ViewBag.PlayerGuess = hangman.playerGuess;
+            hangman.hangmanModels = SetupModel();
+            hangman.incorrectLetters = new List<char>();
+            hangman.correctLetters = new List<char>();
+            hangman.usedLetters = new List<char>();
+            ViewBag.CurrentState = hangman.hangmanModels.ElementAt( 0 ).Image;
+            hangman.incorrectAnswerCount = 0;
+            hangman.currentState = hangman.hangmanModels.ElementAt(0);
+            hangman.isPlaying = true;
+            TempData["Hangman"] = hangman;
+            //}
+            //else
+            //{
+            //    // failed to initate game
+            //    ViewBag.Message = "Error starting game. Please try again";
+            //}
         }
 
 
@@ -132,19 +138,14 @@ namespace Hangman.Controllers
         /// <param name="input">HangmanClass contains values captured by players input</param>
         /// <returns>Returns the next phase of the game</returns>
         [HttpPost]
-        public ActionResult PlayerInput(HangmanClass input)
+        public ActionResult PlayerInput(string input)
         {
-            if ( ModelState.IsValid )
+            HangmanClass hangman = TempData["Hangman"] as HangmanClass;
+            if ( ModelState.IsValid && hangman != null && hangman.isPlaying == true )
             {
-
                 // join input to game state
-                var playerInput = input.playerInput;
-                HangmanClass hangman = TempData["Hangman"] as HangmanClass;
+                var playerInput = input.ToLower();
                 hangman.playerInput = playerInput;
-
-                // redirect back to NewGame if not properly initalized
-                if( hangman.isPlaying == false)
-                    return RedirectToAction( "NewGame" );
 
                 // move forward with valid input
                 if ( !string.IsNullOrWhiteSpace( playerInput ) )
@@ -191,41 +192,56 @@ namespace Hangman.Controllers
                 int incorrectAnswerCount = hangman.incorrectAnswerCount;
 
                 // store game state in ViewBag for UI
-                ViewBag.CurrentState = models.ElementAt( incorrectAnswerCount ).Image;
-                ViewBag.WordToGuess = hangman.playerGuess;
+                if( hangman.incorrectAnswerCount < 6 )
+                {
+                    ViewBag.CurrentState = models.ElementAt( incorrectAnswerCount ).Image;
+                    TempData["CurrentState"] = models.ElementAt( incorrectAnswerCount ).Image;
+                }
+                else
+                {
+                    ViewBag.CurrentState = models.Last().Image;
+                    TempData["CurrentState"] = models.Last().Image;
+                }
+
+                ViewBag.PlayerGuess = hangman.playerGuess;
                 ViewBag.UsedLetters = string.Join(", ", hangman.usedLetters);
                 ViewBag.IncorrectLetters = string.Join( ", ", hangman.incorrectLetters );
                 ViewBag.IncorrectCount = hangman.incorrectAnswerCount;
                 ViewBag.IsPlaying = true;
-
-                // save Game State
-                TempData["Hangman"] = hangman;
+                TempData["WordToGuess"] = hangman.wordToGuess;
+                TempData["IncorrectLetters"] = string.Join( ", " , hangman.incorrectLetters );
 
                 if ( hangman.playerGuess == hangman.wordToGuess )
                 {
                     // won game
-                    TempData["HasWon"] = true;
-                    TempData["WordToGuess"] = hangman.wordToGuess;
-                    TempData["CurrentState"] = models.ElementAt( incorrectAnswerCount ).Image;
-                    TempData["IncorrectLetters"] = string.Join( ", " , hangman.incorrectLetters );
                     hangman.hasWon = true;
+                    ViewBag.HasWon = "true";
+                    ViewBag.PlayerGuess = hangman.playerGuess;
+                    hangman.isPlaying = false;
+                    // save Game State
                     TempData["Hangman"] = hangman;
-                    return RedirectToAction( "NextGame");
+                    return PartialView( "Input", hangman );
+
                 }
-                else if ( hangman.incorrectAnswerCount == 6 )
+                else if ( hangman.incorrectAnswerCount >= 6 )
                 {
                     // game over                
-                    TempData["HasWon"] = false;
-                    TempData["WordToGuess"] = hangman.wordToGuess;
-                    TempData["CurrentState"] = models.ElementAt( incorrectAnswerCount ).Image;
-                    TempData["IncorrectLetters"] = string.Join( ", " , hangman.incorrectLetters );
                     hangman.hasWon = false;
+                    ViewBag.HasWon = "false";
+                    ViewBag.WordToGuess = hangman.wordToGuess;
+                    ViewBag.PlayerGuess = hangman.playerGuess;
+                    hangman.isPlaying = false;
+                    // save Game State
                     TempData["Hangman"] = hangman;
-                    return RedirectToAction( "NextGame" );
+                    return PartialView( "Input", hangman );
                 }
                 else
                 {
-                    return View( "Game" , hangman );
+
+                    ViewBag.PlayerGuess = hangman.playerGuess;
+                    // save Game State
+                    TempData["Hangman"] = hangman;
+                    return PartialView( "GameBoard" , hangman );
                 }
             }
             // todo:
@@ -339,6 +355,14 @@ namespace Hangman.Controllers
             var wordTrimmed = System.Text.Encoding.Default.GetString(bytes).Remove(0,2);
             var wordLength = wordTrimmed.Length - 2;
             return wordTrimmed.Substring(0, wordLength);
+        }
+
+        private string GetRandomWord()
+        {
+            var words = new string[] { "craven","satisfying","cumbersome","harmonious","dirty","basketball","furtive","downtown","wrathful","gruesome","sail","please","puzzled","shaggy","truculent","moor","order","whistle","educated","responsible","volcano","wrong","magical","arch","squirrel","cool","queen","suspect","innate","wry","dapper","obscene","sink","naughty","elfin","channel","birthday","activity","juice","deserted","sleet","greedy","throat","TRUE","save","man","spiders","flimsy","kneel","imminent","open","hurried","current","trade","wonderful","careful","frequent","cemetery","miss","condition","butter","governor","scratch","knit","language","knock","abhorrent","dazzling","frightened","ray","ice","gullible","dog","lick","oatmeal","tiger","amusing","tangy","dad","grandiose","tangible","tug","fish","icicle","uptight","engine","smash","victorious","attraction","substantial","paste","obedient","woozy","airport","hill","helpless","precious","agree","rampant","locket","decorous","vegetable","flowery","desire","brass","cushion","blushing","cats","wobble","sea","cloth","sincere","spectacular","pathetic","earsplitting","famous","recondite","absent","supply","monkey","ritzy","humorous","motion","efficient","shy","obnoxious","duck","trouble","flagrant","queue","train","successful","jumbled","flood","van","snore","aback","behave","lie","unite","money","hospital","picture","end","defective","daffy","circle","equable","matter","versed","unique","turn","agreeable","naive","frantic","innocent","material","buzz","disarm","rate","wind","deep","boundless","suck","spell","outrageous","laborer","consider","tub","fit","treat","chalk","questionable","huge","program","wrestle","plastic","book","milk","room","analyze","park","accept","development","afternoon","friction","snakes","useless","excuse","plane","broken","delicate","bounce","double","sleepy","grouchy","exchange","dinner","slope","stupendous","lame","whine","rake","watery","selection","political","seat","drum","shoe","taste","weary","skinny","trees","caring","squeamish","lean","amuck","upset","church","effect","surround","inexpensive","wool","cagey","school","long","elderly","warm","squeak","defeated","tramp","label","neck","tricky","guttural","cub","right","top","ripe","iron","paint","title","minute","place","tumble","unsightly","mug","plants","somber","lighten","lonely","prick","whip","event","nutty","spring","war","violet","bad","bee","friend","ultra","tame","press","control","bashful","itch","adaptable","sordid","mean","afterthought","thank","cheer","gaudy","overwrought","battle","hissing","overt","oven","hapless","slippery","produce","resolute","voracious","brown","squash","object","record","aquatic","crazy","nation","yak","club","squealing","obsolete","fall","bedroom","root","complex","hurt","fresh","sky","hair","near","rhyme","unusual","anxious","song","shiny","serve","expansion","unaccountable","things","sour","comparison","terrific","veil","lunchroom","deafening","elated","dark","orange","sore","kindhearted","crack","mellow","flow","sophisticated","donkey","baby","nice","arm","rabid","unnatural","day","helpful","men","unknown","mammoth","playground","squeal","judge","support","wet","desk","certain","punishment","moaning","breath","riddle","thunder","name","verse","whole","quixotic","real","river","group","stay","wakeful","wretched","imported","abstracted","hollow","lunch","remove","correct","fantastic","alert","tray","chickens","different","important","pear","frame","alarm","discover","border","utopian","cut","busy","appear","zoom","flash","invent","puny","relax","answer","heat","hysterical","salt","painstaking","whisper","greasy","route","boat","question","steadfast","simplistic","little","imagine","succeed","bat","uppity","glib","thirsty","basket","wide","birds","spotty","utter","melodic","thin","grandfather","approval","pause","shake","remember","mint","flashy","detect","sudden","married","enthusiastic","search","peaceful","glistening","vivacious","tasteful","resonant","scattered","awful","coordinated","moon","misty","sneaky","overconfident","land","cheat","repair","aboard","hum","proud","promise","eager","ban","aggressive","crowd","store","talented","sigh","sisters","rely","week","filthy","disgusted","slim","suggest","thick","cry","gratis","gorgeous","damage","cross","use","uninterested","hideous","weather","power","attach","addition","paddle","yard","excellent","digestion","agonizing","finger","bomb","vein","wash","love","tickle","pastoral","hand","base","merciful","roomy","rob","glossy","elastic","tease","glove","claim","list","women" };
+            Random rand = new Random();
+            int number = rand.Next(0,494);
+            return words[number];
         }
 
         /// <summary>

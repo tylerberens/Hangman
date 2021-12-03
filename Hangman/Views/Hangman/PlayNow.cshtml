@@ -1,0 +1,59 @@
+﻿@model Hangman.Models.HangmanClass
+@{
+    ViewBag.Title = "Play Now";
+    Layout = "~/Views/Shared/_DefaultLayout.cshtml";
+
+    AjaxOptions ajaxOptions = new AjaxOptions
+    {
+        HttpMethod = "Post",
+        InsertionMode = InsertionMode.Replace,
+        UpdateTargetId = "Hangman"
+    };
+}
+<div class="container">
+    <div class="text-center m-5">
+        You started playing at <br /> @System.DateTime.Now
+    </div>
+
+    <div id="startScreen" class="center">
+        <div class="panel">
+            <div class="panel-body text-center">
+
+                <button class="btn btn-primary btn-lg" type="submit" id="btnSubmit">Play Now</button>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="Hangman" style="display:none;"></div>
+</div>
+
+
+
+<script type="text/javascript">
+    $(function () {
+        var preventDefault = true;
+        $('#btnSubmit').click(function (e) {
+
+            e.preventDefault();
+            if (preventDefault) {
+                preventDefault = false;
+
+                $.ajax({
+                    url: '@Url.Action( "NewGame" , "Hangman", Model)',
+                    type: 'POST',
+                    cache: false,
+                    async: false
+                }).done(function (result) {
+                    $("#startScreen").fadeOut(500);
+                    setTimeout(function () {
+                        $('#Hangman').html(result);
+                        $('#Hangman').fadeIn(500);
+                    }, 500);
+                });
+
+            }
+
+        });
+    });
+</script>

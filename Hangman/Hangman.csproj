@@ -91,6 +91,14 @@
   <ItemGroup>
     <Content Include="Global.asax" />
     <Content Include="Assets\css\hangman.css" />
+    <None Include="Scripts\jquery-1.8.0.intellisense.js" />
+    <Content Include="Scripts\jquery-1.8.0.js" />
+    <Content Include="Scripts\jquery-1.8.0.min.js" />
+    <None Include="Scripts\jquery.validate-vsdoc.js" />
+    <Content Include="Scripts\jquery.validate.js" />
+    <Content Include="Scripts\jquery.validate.min.js" />
+    <Content Include="Scripts\jquery.validate.unobtrusive.js" />
+    <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -106,10 +114,9 @@
     <Content Include="Views\web.config" />
     <None Include="packages.config" />
     <Content Include="Views\Shared\_DefaultLayout.cshtml" />
-    <Content Include="Views\Hangman\NewGame.cshtml" />
-    <Content Include="Views\Hangman\Game.cshtml" />
-    <Content Include="Views\Hangman\Play.cshtml" />
-    <Content Include="Views\Hangman\NextGame.cshtml" />
+    <Content Include="Views\Hangman\PlayNow.cshtml" />
+    <Content Include="Views\Hangman\Input.cshtml" />
+    <Content Include="Views\Hangman\GameBoard.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
